@@ -1,79 +1,56 @@
-<!DOCTYPE html>
-<html lang="es">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Converter</title>
-    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
-    <style>
-        body, html {
-            height: 100%;
-            margin: 0;
-            background-color: #000000;
-            color: #ffffff;
-            font-family: 'Inter', sans-serif;
-            overflow: hidden;
-        }
+from flask import Flask, render_template, request, send_file, after_this_request
+import os
+from pdf2docx import Converter
 
-        .top-selector {
-            position: absolute;
-            top: 30px;
-            right: 30px;
-            z-index: 100;
-        }
+app = Flask(__name__)
 
-        .custom-select {
-            background-color: #111111;
-            color: white;
-            border: 1px solid #333333;
-            padding: 12px 25px;
-            border-radius: 10px;
-            font-weight: 600;
-            outline: none;
-            cursor: pointer;
-            transition: 0.3s;
-        }
+# Usamos /tmp porque Render permite escribir archivos ahí sin errores
+UPLOAD_FOLDER = '/tmp'
+os.makedirs(UPLOAD_FOLDER, exist_ok=True)
 
-        .main-container {
-            height: 100vh;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            padding: 20px;
-        }
+@app.route('/')
+def index():
+    return render_template('index.html')
 
-        .big-card {
-            background: #0a0a0a;
-            border: 2px solid #1a1a1a;
-            border-radius: 30px;
-            width: 90%;
-            max-width: 800px;
-            padding: 60px 40px;
-            text-align: center;
-            box-shadow: 0 0 60px rgba(255, 255, 255, 0.02);
-        }
+# Ruta corregida para coincidir con tu HTML original
+@app.route('/converter', methods=['POST'])
+def convertir():
+    archivo = request.files.get('archivo')
+    if not archivo: 
+        return "No hay archivo", 400
+    
+    ruta_entrada = os.path.join(UPLOAD_FOLDER, archivo.filename)
+    archivo.save(ruta_entrada)
+    nombre_base, extension = os.path.splitext(archivo.filename)
 
-        h1 {
-            font-size: 4rem;
-            font-weight: 900;
-            letter-spacing: -3px;
-            margin-bottom: 40px;
-            text-transform: uppercase;
-        }
+    if extension.lower() == ".pdf":
+        ruta_salida = os.path.join(UPLOAD_FOLDER, nombre_base + ".docx")
+        
+        try:
+            # Proceso de conversión
+            cv = Converter(ruta_entrada)
+            cv.convert(ruta_salida)
+            cv.close()
 
-        .form-control-lg {
-            background-color: #111111 !important;
-            border: 2px dashed #333333 !important;
-            color: #ffffff !important;
-            padding: 40px !important;
-            border-radius: 20px !important;
-        }
+            # Borra los archivos del servidor después de enviarlos para no llenar el disco
+            @after_this_request
+            def cleanup(response):
+                try:
+                    if os.path.exists(ruta_entrada): os.remove(ruta_entrada)
+                    if os.path.exists(ruta_salida): os.remove(ruta_salida)
+                except Exception as e:
+                    print(f"Error al limpiar: {e}")
+                return response
 
-        .btn-massive {
-            background-color: #ffffff;
-            color: #000000;
-            font-size: 1.5rem;
-            font-weight: 900;
+            return send_file(ruta_salida, as_attachment=True)
+        except Exception as e:
+            return f"Error en la conversión: {str(e)}", 500
+    else:
+        return "Solo se admiten archivos PDF", 400
+
+if __name__ == '__main__':
+    port = int(os.environ.get('PORT', 5000))
+    app.run(host='0.0.0.0', port=port)
             padding: 18px;
             border-radius: 15px;
             text-transform: uppercase;
