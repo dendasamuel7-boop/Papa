@@ -1,47 +1,116 @@
-from flask import Flask, render_template, request, send_file, after_this_request
-import os
-from pdf2docx import Converter
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Converter</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <style>
+        body, html {
+            height: 100%;
+            margin: 0;
+            background-color: #000000;
+            color: #ffffff;
+            font-family: 'Inter', sans-serif;
+            overflow: hidden;
+        }
 
-app = Flask(__name__)
+        .top-selector {
+            position: absolute;
+            top: 30px;
+            right: 30px;
+            z-index: 100;
+        }
 
-# Configuración para Render
-UPLOAD_FOLDER = '/tmp'
-os.makedirs(UPLOAD_FOLDER, exist_ok=True)
+        .custom-select {
+            background-color: #111111;
+            color: white;
+            border: 1px solid #333333;
+            padding: 12px 25px;
+            border-radius: 10px;
+            font-weight: 600;
+            outline: none;
+            cursor: pointer;
+            transition: 0.3s;
+        }
 
-@app.route('/')
-def index():
-    return render_template('index.html')
+        .main-container {
+            height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 20px;
+        }
 
-@app.route('/converter', methods=['POST'])
-def convertir():
-    archivo = request.files.get('archivo')
-    if not archivo: 
-        return "No hay archivo", 400
-    
-    ruta_entrada = os.path.join(UPLOAD_FOLDER, archivo.filename)
-    archivo.save(ruta_entrada)
-    nombre_base, extension = os.path.splitext(archivo.filename)
+        .big-card {
+            background: #0a0a0a;
+            border: 2px solid #1a1a1a;
+            border-radius: 30px;
+            width: 90%;
+            max-width: 800px;
+            padding: 60px 40px;
+            text-align: center;
+            box-shadow: 0 0 60px rgba(255, 255, 255, 0.02);
+        }
 
-    if extension.lower() == ".pdf":
-        ruta_salida = os.path.join(UPLOAD_FOLDER, nombre_base + ".docx")
-        try:
-            cv = Converter(ruta_entrada)
-            cv.convert(ruta_salida)
-            cv.close()
+        h1 {
+            font-size: 4rem;
+            font-weight: 900;
+            letter-spacing: -3px;
+            margin-bottom: 40px;
+            text-transform: uppercase;
+        }
 
-            @after_this_request
-            def cleanup(response):
-                try:
-                    if os.path.exists(ruta_entrada): os.remove(ruta_entrada)
-                    if os.path.exists(ruta_salida): os.remove(ruta_salida)
-                except: pass
-                return response
+        .form-control-lg {
+            background-color: #111111 !important;
+            border: 2px dashed #333333 !important;
+            color: #ffffff !important;
+            padding: 40px !important;
+            border-radius: 20px !important;
+        }
 
-            return send_file(ruta_salida, as_attachment=True)
-        except Exception as e:
-            return f"Error: {str(e)}", 500
-    return "Solo PDF", 400
+        .btn-massive {
+            background-color: #ffffff;
+            color: #000000;
+            font-size: 1.5rem;
+            font-weight: 900;
+            padding: 18px;
+            border-radius: 15px;
+            text-transform: uppercase;
+            border: none;
+            transition: 0.3s;
+        }
 
-if __name__ == '__main__':
-    port = int(os.environ.get('PORT', 5000))
-    app.run(host='0.0.0.0', port=port)
+        .btn-massive:hover {
+            background-color: #e0e0e0;
+            transform: translateY(-3px);
+        }
+    </style>
+</head>
+<body>
+
+    <form action="/convertir" method="POST" enctype="multipart/form-data">
+        <div class="top-selector">
+            <select name="tipo_conversion" class="custom-select">
+                <option value="pdf_to_word">PDF a WORD</option>
+                <option value="word_to_pdf">WORD a PDF (Próximamente)</option>
+            </select>
+        </div>
+
+        <div class="main-container">
+            <div class="big-card">
+                <h1>Convertor</h1>
+                
+                <div class="mb-4">
+                    <input class="form-control form-control-lg" type="file" name="archivo" accept=".pdf" required>
+                </div>
+                
+                <button type="submit" class="btn btn-massive w-100">
+                    CONVERTIR AHORA
+                </button>
+            </div>
+        </div>
+    </form>
+
+</body>
+</html>
