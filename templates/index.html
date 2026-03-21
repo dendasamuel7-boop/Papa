@@ -4,7 +4,7 @@ from pdf2docx import Converter
 
 app = Flask(__name__)
 
-# Usamos /tmp porque Render permite escribir archivos ahí sin errores
+# Configuración para Render
 UPLOAD_FOLDER = '/tmp'
 os.makedirs(UPLOAD_FOLDER, exist_ok=True)
 
@@ -12,7 +12,6 @@ os.makedirs(UPLOAD_FOLDER, exist_ok=True)
 def index():
     return render_template('index.html')
 
-# Ruta corregida para coincidir con tu HTML original
 @app.route('/converter', methods=['POST'])
 def convertir():
     archivo = request.files.get('archivo')
@@ -25,69 +24,24 @@ def convertir():
 
     if extension.lower() == ".pdf":
         ruta_salida = os.path.join(UPLOAD_FOLDER, nombre_base + ".docx")
-        
         try:
-            # Proceso de conversión
             cv = Converter(ruta_entrada)
             cv.convert(ruta_salida)
             cv.close()
 
-            # Borra los archivos del servidor después de enviarlos para no llenar el disco
             @after_this_request
             def cleanup(response):
                 try:
                     if os.path.exists(ruta_entrada): os.remove(ruta_entrada)
                     if os.path.exists(ruta_salida): os.remove(ruta_salida)
-                except Exception as e:
-                    print(f"Error al limpiar: {e}")
+                except: pass
                 return response
 
             return send_file(ruta_salida, as_attachment=True)
         except Exception as e:
-            return f"Error en la conversión: {str(e)}", 500
-    else:
-        return "Solo se admiten archivos PDF", 400
+            return f"Error: {str(e)}", 500
+    return "Solo PDF", 400
 
 if __name__ == '__main__':
     port = int(os.environ.get('PORT', 5000))
     app.run(host='0.0.0.0', port=port)
-            padding: 18px;
-            border-radius: 15px;
-            text-transform: uppercase;
-            border: none;
-            transition: 0.3s;
-        }
-
-        .btn-massive:hover {
-            background-color: #e0e0e0;
-            transform: translateY(-3px);
-        }
-    </style>
-</head>
-<body>
-
-    <form action="/convertir" method="POST" enctype="multipart/form-data">
-        <div class="top-selector">
-            <select name="tipo_conversion" class="custom-select">
-                <option value="pdf_to_word">PDF a WORD</option>
-                <option value="word_to_pdf">WORD a PDF (Próximamente)</option>
-            </select>
-        </div>
-
-        <div class="main-container">
-            <div class="big-card">
-                <h1>Convertor</h1>
-                
-                <div class="mb-4">
-                    <input class="form-control form-control-lg" type="file" name="archivo" accept=".pdf" required>
-                </div>
-                
-                <button type="submit" class="btn btn-massive w-100">
-                    CONVERTIR AHORA
-                </button>
-            </div>
-        </div>
-    </form>
-
-</body>
-</html>
